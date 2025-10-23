@@ -250,6 +250,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           xrButton.setSession(null);
         }
       }
+
+      function onSessionEndedNeu(event) {
+        // Only reset the button when the immersive session ends.
+        if (event.session.isImmersive) {
+          xrButtonNeu.setSession(null);
+        }
+      }
       
       // Called every time a XRSession requests that a new frame be drawn.
       function onXRFrame(t, frame) {
