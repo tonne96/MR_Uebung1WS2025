@@ -97,6 +97,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
       // XR globals.
       let xrButton = null;
+      let xrButtonNeu = null;
       let xrImmersiveRefSpace = null;
       let xrInlineRefSpace = null;
 
@@ -106,6 +107,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let scene = new Scene();
       let solarSystem = new Gltf2Node({url: 'media/gltf/space/space.gltf'});
       scene.addNode(solarSystem);
+      let skybox = new SkyboxNode({url: 'media/textures/milky-way-4k.png'});
+      scene.addNode(skybox);
+      let arStartedNeu;
       scene.addNode(new SkyboxNode({url: 'media/textures/milky-way-4k.png'}));
 
       function initXR() {
@@ -114,12 +118,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           onEndSession: onEndSession
         });
         document.querySelector('header').appendChild(xrButton.domElement);
+        
+        xrButtonNeu = new WebXRButton({
+          onRequestSession: onRequestSessionNeu,
+          onEndSession: onEndSession,
+          textEnterXRTitle: "START AR",
+          textXRNotFoundTitle: "AR NOT FOUND",
+          textExitXRTitle: "EXIT  AR",
+        });
+        document.querySelector('header').appendChild(xrButtonNeu.domElement);
 
         if (navigator.xr) {
           navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-            xrButton.enabled = supported;
+            xrButton.enabled = supported
           });
-
+          navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                xrButtonNeu.enabled = supported;
+          });
+        
           // Start up an inline session, which should always be supported on
           // browsers that support WebXR regardless of the available hardware.
           navigator.xr.requestSession('inline').then((session) => {
@@ -130,6 +146,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         }
       }
 
+      arStartedNeu = false;
+
       function onRequestSession() {
         return navigator.xr.requestSession('immersive-vr').then((session) => {
           xrButton.setSession(session);
@@ -139,6 +157,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           onSessionStarted(session);
         });
       }
+
+      function onRequestSessionNeu() {
+            return navigator.xr.requestSession('immersive-ar').then((session) => {
+                xrButtonNeu.setSession(session);
+               // Set a flag on the session so we can differentiate it from the
+               // inline session.
+               session.isImmersive = true;
+               arStartedNeu = true;
+               onSessionStarted(session);
+           });
+        }
+
 
       function onSessionStarted(session) {
         session.addEventListener('end', onSessionEnded);
@@ -193,6 +223,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           }
           session.requestAnimationFrame(onXRFrame);
         });
+        xrImmersiveRefSpace.addEventListener('reset', (evt) => {
+              if (evt.transform) {
+                // AR experiences typically should stay grounded to the real world.
+                // If there's a known origin shift, compensate for it here.
+                xrImmersiveRefSpace = xrImmersiveRefSpace.getOffsetReferenceSpace(evt.transform);
+              }
+            });
       }
 
       function onEndSession(session) {
@@ -205,7 +242,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           xrButton.setSession(null);
         }
       }
-
+      
       // Called every time a XRSession requests that a new frame be drawn.
       function onXRFrame(t, frame) {
         let session = frame.session;
@@ -218,6 +255,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // calculating the viewer pose for inline sessions.
         if (!session.isImmersive) {
           refSpace = getAdjustedRefSpace(refSpace);
+        }
+
+        if (session.isImmersive && arStartedNeu) {
+          // When in 'immersive-ar' mode don't draw an opaque background because
+          // we want the real world to show through.
+          skybox.visible = false;
         }
 
         let pose = frame.getViewerPose(refSpace);
