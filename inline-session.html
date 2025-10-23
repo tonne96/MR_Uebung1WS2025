@@ -172,7 +172,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
       function onSessionStarted(session) {
-        session.addEventListener('end', onSessionEnded);
+        session.addEventListener('end', onSessionEnded, onSessionEndedNeu);
 
           if (session.isImmersive && arStartedNeu) {
           // When in 'immersive-ar' mode don't draw an opaque background because
